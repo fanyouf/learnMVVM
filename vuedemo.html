@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <div style="width:300px;margin:50px auto; border:2px solid #ccc;padding:20px;">
+      <h2>
+        MVVM demo
+      </h2>
+
+      <div id="app">
+        工资:<input type="text" v-model="salary" /><span>{{ salary }}</span>
+        <br />
+        奖金:<input type="text" v-model="bonus" />
+        <br />
+        <span>到手:{{ cTotalMoney }}</span>
+        <button @click="hDobule">工资加倍</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.bootcss.com/vue/2.6.10/vue.js"></script>
+    <script>
+      function MVVM(options) {
+        this.data = options.data;
+        this.$el = document.querySelector(options.el);
+        this.$computed = options.computed;
+        this.$methods = options.methods;
+        this.initComputed();
+
+        Object.keys(this.data).forEach(key => {
+          let dep = new Dep();
+          Object.defineProperty(this, key, {
+            get: function() {
+              console.info("get", key, this.data[key]);
+              Dep.target && dep.add(Dep.target);
+              return this.data[key];
+            },
+            set: function(newVal) {
+              console.info("set", key, newVal);
+              this.data[key] = newVal;
+              dep.fire();
+            }
+          });
+        });
+        this.compile();
+      }
+
+      MVVM.prototype.compile = function() {
+        console.info(".....compile......");
+        let el = this.$el;
+        let vm = this;
+        let regMustacle = /{{(.*)}}/;
+        Array.from(el.children).forEach(node => {
+          debugger;
+          if (node.hasAttribute("v-model")) {
+            let exp = node.getAttribute("v-model");
+            console.info("v-model", exp);
+
+            node.value = vm[exp];
+
+            new Watcher(vm, exp, () => {
+              node.value = vm[exp];
+            });
+
+            node.addEventListener("input", e => {
+              console.info("input change.....", e);
+              vm[exp] = e.target.value;
+            });
+          } else if (node.hasAttribute("v-bind")) {
+            let exp = node.getAttribute("v-bind");
+            console.info("v-bind", exp);
+
+            node.innerHTML = vm[exp];
+
+            new Watcher(vm, exp, () => {
+              node.innerHTML = vm[exp];
+            });
+          } else if (node.hasAttribute("@click")) {
+            let exp = node.getAttribute("@click");
+            node.addEventListener("click", () => {
+              vm.$methods[exp].call(vm);
+            });
+          } else if (regMustacle.test(node.innerHTML)) {
+            node._intervalInnerHTML = node.innerHTML;
+            let _t = node.innerHTML.replace(/\s/g, "").match(regMustacle);
+            let exp = _t[1];
+
+            node.innerHTML = node._intervalInnerHTML.replace(regMustacle, vm[exp]);
+
+            new Watcher(vm, exp, () => {
+              debugger;
+              node.innerHTML = node._intervalInnerHTML.replace(regMustacle, vm[exp]);
+            });
+          }
+        });
+      };
+
+      MVVM.prototype.initComputed = function() {
+        Object.keys(this.$computed).forEach(computer => {
+          Object.defineProperty(this, computer, {
+            get: this.$computed[computer]
+          });
+        });
+      };
+
+      function Dep() {
+        this.sub = [];
+      }
+      Dep.prototype.add = function(watch) {
+        this.sub.push(watch);
+      };
+      Dep.prototype.fire = function() {
+        this.sub.forEach(watch => watch.update());
+      };
+
+      function Watcher(vm, exp, fn) {
+        this.vm = vm;
+        this.exp = exp;
+        Dep.target = this;
+        vm[exp];
+        Dep.target = null;
+        this.fn = fn;
+      }
+      Watcher.prototype.update = function() {
+        this.fn();
+      };
+    </script>
+    <script>
+      var vm = new Vue({
+        el: "#app",
+        data: {
+          salary: 10000,
+          bonus: 50000
+        },
+        computed: {
+          cTotalMoney() {
+            console.info("computed.....");
+            return +this.salary + +this.bonus;
+          }
+        },
+        methods: {
+          hDobule() {
+            this.salary *= 2;
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
