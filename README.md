@@ -72,6 +72,8 @@ let vm = new Vue({
 前面的理论到此为止，下面我们开始进入实践的环节。
 先来看一个小 demo。
 
+[demo](!./demo-mvvm.gif)
+
 ```
  <div id="app">
     工资:<input type="text" v-model="salary" /><span>{{ salary }}</span>
